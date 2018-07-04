@@ -7,14 +7,17 @@
 #include "VBO.h"
 #include "Vec3.h"
 #include <cmath>
-#include "Main.h"
+
 
 typedef Vec3<float> Vec3f;
 typedef Vec4<float> Vec4f;
 typedef VBO<float> VBOf;
 
-unsigned int WIDTH = 600;
-unsigned int HEIGHT = 600;
+const unsigned int INITIALWIDTH = 600;
+const unsigned int INITIALHEIGHT = 600;
+unsigned int WIDTH = INITIALWIDTH;
+unsigned int HEIGHT = INITIALHEIGHT;
+
 sf::Texture screen;
 sf::Uint8* ColorBuffer;
 
@@ -28,7 +31,66 @@ void Clear(Vec4f ClearColor) {
 }
 
 __global__ void Render(sf::Uint8 *ColorBuffer) {
-	if();
+	
 }
 
+int main() {
+	//setup sf variables
+	ColorBuffer = new sf::Uint8[WIDTH*HEIGHT * 4];
+	screen.create(WIDTH, HEIGHT);
+	sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "Rasterizer", sf::Style::Close | sf::Style::Resize);
+	sf::Sprite mSprite;
+	mSprite.setTexture(screen);
+	sf::Event evnt;
+	Vec3f tri[3] = { Vec3f(0,0,2),Vec3f(0,200,2),Vec3f(200,0,2)};
 
+	while (window.isOpen()) {
+		
+		while (window.pollEvent(evnt)) {
+			switch (evnt.type) {
+			case sf::Event::Closed:
+				window.close();
+				break;
+			case sf::Event::KeyPressed:
+				switch (evnt.key.code) {
+				case sf::Keyboard::Escape:
+					window.close();
+					break;
+				}
+				break;
+			case sf::Event::Resized:
+				if (window.getSize().x < 600){
+				window.setSize(sf::Vector2u(INITIALWIDTH, HEIGHT));
+				 break;
+				 }
+				if (window.getSize().y < 600){
+				window.setSize(sf::Vector2u(WIDTH, INITIALHEIGHT));
+				break;
+				}
+
+
+				WIDTH = window.getSize().x;
+				HEIGHT = window.getSize().y;
+				delete ColorBuffer;
+				ColorBuffer = nullptr;
+				ColorBuffer = new sf::Uint8[WIDTH*HEIGHT * 4];
+				break;
+			}
+		}
+		
+		Clear(Vec4f(255,0,0,255));
+		sf::Clock clock;
+		
+		//push render to screen
+		screen.update(ColorBuffer);
+
+		
+		window.clear(sf::Color::Black);
+
+		window.draw(mSprite);
+
+		window.display();
+
+		std::cout << clock.restart().asMilliseconds() << std::endl;
+	}
+}
