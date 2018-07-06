@@ -36,12 +36,14 @@ __global__ void Render(sf::Uint8 *ColorBuffer) {
 
 int main() {
 	//setup sf variables
-	ColorBuffer = new sf::Uint8[WIDTH*HEIGHT * 4];
 	screen.create(WIDTH, HEIGHT);
 	sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "Rasterizer", sf::Style::Close | sf::Style::Resize);
 	sf::Sprite mSprite;
 	mSprite.setTexture(screen);
 	sf::Event evnt;
+
+	cudaMallocManaged(&ColorBuffer, WIDTH * HEIGHT * 4);
+
 	Vec3f tri[3] = { Vec3f(0,0,2),Vec3f(0,200,2),Vec3f(200,0,2)};
 
 	while (window.isOpen()) {
@@ -80,7 +82,10 @@ int main() {
 		
 		Clear(Vec4f(255,0,0,255));
 		sf::Clock clock;
-		
+		//render
+		Render<<<1,1>>>(ColorBuffer);
+
+
 		//push render to screen
 		screen.update(ColorBuffer);
 
