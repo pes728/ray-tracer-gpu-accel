@@ -101,8 +101,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="VBO.h" />
-    <ClInclude Include="Vec3.h" />
-    <ClInclude Include="Vec4.h" />
+    <ClInclude Include="Vec.cuh" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
