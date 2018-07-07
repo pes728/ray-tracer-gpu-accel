@@ -32,7 +32,7 @@ public:
 template <typename T>
 class Vec3 {
 public:
-	Vec3() {}
+	Vec3() {e[0] = 0; e[1] = 0; e[2] = 0;}
 	Vec3(T x, T y, T z) {
 		e[0] = x; e[1] = y; e[2] = z;
 	}
