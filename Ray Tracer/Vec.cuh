@@ -47,6 +47,26 @@ public:
 		return e[2];
 	}
 	
+	__host__ __device__ T Dot(const Vec3<T> &v) const { return e[0] * v[0] + e[1] * v[1] + e[2] * v[2];}
+  __host__ __device__ Vec3<T> Cross(const Vec3<T> &v){
+        return Vec3<T>(e[1] * v[2] - e[2] * v[1], e[2] * v[0] - e[0] * v[2], e[0] * v[1] - e[1] * v[0]);
+    }
+    __host__ __device__ T length()const{return sqrt(e[0]*e[0] + e[1]*e[1] + e[2]*e[2]);}
+    __host__ __device__ void Normalize(){
+        if(this->length() > 0){
+            T inverseLength = 1 / sqrt(Dot(*this));
+            e[0] *= inverseLength; e[1] *= inverseLength; e[2] *= inverseLength;
+        }
+    }
+
+    
+    void Print(){
+        std::cout << e[0] << ", " << e[1] << ", " << e[2] << std::endl;
+    }
+
+	
+	
+	
 	 __host__ __device__ T operator[](int i) const{
 		return e[i];
 	}
