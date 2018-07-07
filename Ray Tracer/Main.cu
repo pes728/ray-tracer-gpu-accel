@@ -89,8 +89,6 @@ int main() {
 
 		sf::Clock clock;
 		//render
-		
-		cudaMemcpy(d_ColorBuffer, ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4, cudaMemcpyHostToDevice);
 
 		Render <<<1, 1 >> >(d_ColorBuffer, WIDTH * HEIGHT);
 		
