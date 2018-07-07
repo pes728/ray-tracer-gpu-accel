@@ -32,7 +32,7 @@ public:
 template <typename T>
 class Vec3 {
 public:
-	Vec3() {}
+	Vec3() {e[0] = 0; e[1] = 0; e[2] = 0;}
 	Vec3(T x, T y, T z) {
 		e[0] = x; e[1] = y; e[2] = z;
 	}
@@ -51,5 +51,17 @@ public:
 		return e[i];
 	}
 
+	 __host__ __device__ T Dot(const Vec3<T> &v) const { return e[0] * v[0] + e[1] * v[1] + e[2] * v[2]; }
+	 __host__ __device__ Vec3<T> Cross(const Vec3<T> &v) {
+		 return Vec3<T>(e[1] * v[2] - e[2] * v[1], e[2] * v[0] - e[0] * v[2], e[0] * v[1] - e[1] * v[0]);
+	 }
+	 __host__ __device__ T length()const { return sqrt(e[0] * e[0] + e[1] * e[1] + e[2] * e[2]); }
+	 __host__ __device__ Vec3<T> Normalize() {
+		 if (this->length() > 0) {
+			 T inverseLength = 1 / sqrt(Dot(*this));
+			 e[0] *= inverseLength; e[1] *= inverseLength; e[2] *= inverseLength;
+		 }
+		 return *this;
+	 }
 	T e[3];
 };

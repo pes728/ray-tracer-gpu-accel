@@ -16,6 +16,8 @@ const unsigned int INITIALWIDTH = 600;
 const unsigned int INITIALHEIGHT = 600;
 unsigned int WIDTH = INITIALWIDTH;
 unsigned int HEIGHT = INITIALHEIGHT;
+unsigned int FOV = 90;
+
 
 sf::Texture screen;
 
@@ -28,11 +30,37 @@ __device__ void Clear(float r, float g, float b, float a, sf::Uint8* ColorBuffer
 	}
 }
 
-__global__ void Render(sf::Uint8 *ColorBuffer, int N) {
-	Clear(255,0,0,255, ColorBuffer, N);
 
-sf::Uint8* ColorBuffer;
 
+__global__ void Render(sf::Uint8 *ColorBuffer, int WIDTH, int HEIGHT, std::vector<VBOf> VBOs) {
+	Clear(255,0,0,255, ColorBuffer, WIDTH * HEIGHT);
+	//generate camera rays
+	//camera pos = 0,0,0
+	//camera vec = 1,0,0
+	for(int y = 0; y < HEIGHT; y++){
+		for (int x = 0; x < WIDTH; x++) {
+			float t;
+			for(VBOf vbo: VBOs){
+				if (Intersect(Vec3f(), Vec3f(1, (2 * x - 1) * (WIDTH / HEIGHT) * tan(FOV / 2), (1 - 2 * y) * tan(FOV / 2)).Normalize(), t, vbo)) {
+					ColorBuffer[x + (y * WIDTH)] = vbo.Color[0];
+					ColorBuffer[x + (y * WIDTH) + 1] = vbo.Color[1];
+					ColorBuffer[x + (y * WIDTH) + 2] = vbo.Color[2];
+					ColorBuffer[x + (y * WIDTH) + 3] = vbo.Color[3];
+				}
+			}
+		}
+	}
+}
+	
+__device__ float area(Vec3f a, Vec3f b, Vec3f c) {
+	return abs(a[1] * (b[2] - c[2]) + b[1] * (c[2] - a[2]) + c[1] * (a[2] - b[2])) / 2;
+}
+
+__device__ bool Intersect(Vec3f Pos, Vec3f Vec, float t, VBOf vbo) {
+	for(int i = 0; i <3; i++){
+	if(area(vbo.vertices.at(vbo.indices.at(i))) == )
+	}
+}
 int main() {
 	//setup sf variables
 	screen.create(WIDTH, HEIGHT);
@@ -40,6 +68,8 @@ int main() {
 	sf::Sprite mSprite;
 	mSprite.setTexture(screen);
 	sf::Event evnt;
+
+
 
 	sf::Uint8* ColorBuffer, *d_ColorBuffer;
 
@@ -52,6 +82,18 @@ int main() {
 
 	
 	Vec3f tri[3] = { Vec3f(0,0,2),Vec3f(0,200,2),Vec3f(200,0,2) };
+	
+	VBOf vbo;
+	vbo.addVec(tri[0]);
+	vbo.addVec(tri[1]);
+	vbo.addVec(tri[2]);
+	vbo.addIncices(0);
+	vbo.addIncices(1);
+	vbo.addIncices(2);
+	vbo.Color = Vec4f(0,0,255,255);
+	
+	std::vector<VBOf> objects;
+	objects.push_back(vbo);
 
 	while (window.isOpen()) {
 
@@ -80,9 +122,10 @@ int main() {
 
 				WIDTH = window.getSize().x;
 				HEIGHT = window.getSize().y;
-				cudaFree(ColorBuffer);
-				cudaMalloc(&ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4);
-
+				cudaFree(d_ColorBuffer);
+				cudaMalloc(&d_ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4);
+				delete ColorBuffer;
+				ColorBuffer = new sf::Uint8[WIDTH * HEIGHT * 4];
 					break;
 			}
 		}
@@ -90,9 +133,7 @@ int main() {
 		sf::Clock clock;
 		//render
 		
-		cudaMemcpy(d_ColorBuffer, ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4, cudaMemcpyHostToDevice);
-
-		Render <<<1, 1 >> >(d_ColorBuffer, WIDTH * HEIGHT);
+		Render <<<1, 1 >>>(d_ColorBuffer, WIDTH, HEIGHT, objects);
 		
 		cudaMemcpy(ColorBuffer, d_ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4, cudaMemcpyDeviceToHost);
 		
