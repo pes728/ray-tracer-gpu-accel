@@ -19,7 +19,6 @@ unsigned int HEIGHT = INITIALHEIGHT;
 
 sf::Texture screen;
 
-
 __device__ void Clear(float r, float g, float b, float a, sf::Uint8* ColorBuffer, int N) {
 	for (int i = 0; i < N * 4; i += 4) {
 		ColorBuffer[i + 0] = r;
@@ -31,7 +30,8 @@ __device__ void Clear(float r, float g, float b, float a, sf::Uint8* ColorBuffer
 
 __global__ void Render(sf::Uint8 *ColorBuffer, int N) {
 	Clear(255,0,0,255, ColorBuffer, N);
-}
+
+sf::Uint8* ColorBuffer;
 
 int main() {
 	//setup sf variables
@@ -40,7 +40,7 @@ int main() {
 	sf::Sprite mSprite;
 	mSprite.setTexture(screen);
 	sf::Event evnt;
-	
+
 	sf::Uint8* ColorBuffer, *d_ColorBuffer;
 
 	ColorBuffer = new sf::Uint8[WIDTH * HEIGHT * 4];
