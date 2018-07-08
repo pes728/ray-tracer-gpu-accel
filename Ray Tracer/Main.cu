@@ -28,30 +28,15 @@ __device__ void Clear(float r, float g, float b, float a, sf::Uint8* ColorBuffer
 	}
 }
 
-__global__ void Render(sf::Uint8 *ColorBuffer, int WIDTH, int HEIGHT, std::vector<VBOf> VBOs) {
-	Clear(255,0,0,255, ColorBuffer, N);
-	for(int y = 0; y <HEIGHT; y++){
-		for(int x = 0; x < WIDTH; x++){
-			float t;
-			for(VBOf vbo:VBOs){
-				//cameraPos = 0,0,0
-				//cameraVec = 0,0,1
-				if(Intersect(Vec3f(), Vec3f(0,0,1) , &t,vbo)){
-					ColorBuffer[x + (y * WIDTH)] = vbo.color[0];
-					ColorBuffer[x + (y * WIDTH) + 1] = vbo.color[1];
-					ColorBuffer[x + (y * WIDTH) + 2] = vbo.color[2];
-					ColorBuffer[x + (y * WIDTH) + 3] = vbo.color[3];
-				}
-			}
-		}
+__global__ void Render(sf::Uint8 *ColorBuffer, int WIDTH, int HEIGHT) {
+	Clear(255,0,0,255, ColorBuffer, WIDTH * HEIGHT);
 	}
 	
 	__device__ float area(Vec3f a, Vec3f b, Vec3f c){
 		return abs(a[1] * (b[2] - c[2]) + b[1] * (c[2] - a[2]) +  c[1] * (a[2] - b[2]))/2;
 	}
 	
-	__device__ bool Intersect(Vec3f Pos, Vec3f Vec, float t, VBOf vbo)){
-		if(area())
+	__device__ bool Intersect(Vec3f Pos, Vec3f Vec, float t, VBOf vbo){
 	}
 
 sf::Uint8* ColorBuffer;
@@ -75,18 +60,6 @@ int main() {
 
 	
 	Vec3f tri[3] = { Vec3f(0,0,2),Vec3f(0,200,2),Vec3f(200,0,2) };
-	
-	VBOf vbo;
-	vbo.addVec(tri[0]);
-	vbo.addVec(tri[1]);
-	vbo.addVec(tri[2]);
-	vbo.addIndices(0);
-	vbo.addIndices(1);
-	vbo.addIndices(2);
-	vbo.color = Vec4f(0,0,255,255);
-	
-	std::vector<VBOf> objects;
-	objects.push_back(vbo);
 
 	while (window.isOpen()) {
 
@@ -125,7 +98,7 @@ int main() {
 		sf::Clock clock;
 		//render
 
-		Render <<<1, 1 >> >(d_ColorBuffer, WIDTH, HEIGHT, objects);
+		Render <<<1, 1 >> >(d_ColorBuffer, WIDTH, HEIGHT);
 		
 		cudaMemcpy(ColorBuffer, d_ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4, cudaMemcpyDeviceToHost);
 		
