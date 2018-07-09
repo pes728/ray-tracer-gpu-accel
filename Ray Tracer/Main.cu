@@ -66,6 +66,7 @@ __global__ void Render(sf::Uint8 *ColorBuffer, int WIDTH, int HEIGHT, float FOV,
 	//generate camera rays
 	//camera pos = 0,0,0
 	//camera vec = 1,0,0
+	return;
 	for (int y = 0; y < HEIGHT; y++) {
 		for (int x = 0; x < WIDTH; x++) {
 			float t;
@@ -97,8 +98,6 @@ int main() {
 	ColorBuffer = new sf::Uint8[WIDTH * HEIGHT * 4];
 	for(int i = 0; i < WIDTH * HEIGHT * 4; i++) ColorBuffer[i] = 0;
 	cudaMalloc(&d_ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4);
-
-	cudaMemcpy(d_ColorBuffer, ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4, cudaMemcpyHostToDevice);
 
 	Vec3f tri[3] = { Vec3f(0,0,2),Vec3f(0,200,2),Vec3f(200,0,2) };
 
