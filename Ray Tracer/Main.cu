@@ -73,10 +73,10 @@ __global__ void Render(sf::Uint8 *ColorBuffer, int WIDTH, int HEIGHT, float FOV,
 			for (int j = 0; j < n; j++) {
 				if (Intersect(Vec3f(), Vec3f(1, (2 * x - 1) * (WIDTH / HEIGHT) * FOV, (1 - 2 * y) * tan(FOV / 2)).Normalize(), t, vbos[j])) {
 
-					ColorBuffer[x + (y * WIDTH)] = vbos[j].Color->e[0];
-					ColorBuffer[x + (y * WIDTH) + 1] = vbos[j].Color->e[1];
-					ColorBuffer[x + (y * WIDTH) + 2] = vbos[j].Color->e[2];
-					ColorBuffer[x + (y * WIDTH) + 3] = vbos[j].Color->e[3];
+					ColorBuffer[x + (y * WIDTH)] = vbos[j].Color[0];
+					ColorBuffer[x + (y * WIDTH) + 1] = vbos[j].Color[1];
+					ColorBuffer[x + (y * WIDTH) + 2] = vbos[j].Color[2];
+					ColorBuffer[x + (y * WIDTH) + 3] = vbos[j].Color[3];
 				}
 			}
 		}
@@ -109,7 +109,7 @@ int main() {
 	vbo.indices.push_back(1);
 	vbo.indices.push_back(2);
 
-	vbo.Color = &Vec4f(0, 0, 255, 255);
+	vbo.Color = Vec4f(0, 0, 255, 255);
 	std::vector<VBOf> objects;
 	objects.push_back(vbo);
 
@@ -159,7 +159,7 @@ int main() {
 
 		cudaMalloc(&d_vbo, sizeof(d_VBOf) * d_objects.size());
 
-		cudaMemcpy(d_vbo, d_objects.data(), sizeof(d_VBOf) * d_objects.size(), cudaMemcpyHostToDevice);
+		cudaMemcpy(d_vbo, d_objects.data(), sizeof(d_vbo), cudaMemcpyHostToDevice);
 
 		Render <<<1, 1 >> >(d_ColorBuffer, WIDTH, HEIGHT, tan(FOV / 2), d_vbo, objects.size());
 
