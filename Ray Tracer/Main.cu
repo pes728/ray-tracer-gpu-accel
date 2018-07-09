@@ -43,7 +43,7 @@ __device__ bool Intersect(Vec3f Pos, Vec3f Vec, float &t, d_VBOf* d_vbo) {
 }
 
 __global__ void Render(sf::Uint8 *ColorBuffer, int WIDTH, int HEIGHT, d_VBOf *d_vbo) {
-	float t = INFINITY;
+	float4 t = INFINITY;
 	if(Intersect(Vec3f(), Vec3f(0,0,1), t, d_vbo))Clear(d_vbo->Color[0], d_vbo->Color[1], d_vbo->Color[2], d_vbo->Color[3], ColorBuffer, WIDTH * HEIGHT);
 	else Clear(255,0,0,255,ColorBuffer,WIDTH * HEIGHT);
 
