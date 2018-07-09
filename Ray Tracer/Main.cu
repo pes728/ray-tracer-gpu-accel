@@ -75,9 +75,9 @@ int main() {
 	Vec3f tri[3] = { Vec3f(0,0,2),Vec3f(0,200,2),Vec3f(200,0,2) };
 
 	VBOf vbo;
-	vbo.addIncices(0);
-	vbo.addIncices(1);
-	vbo.addIncices(2);
+	vbo.addIndices(0);
+	vbo.addIndices(1);
+	vbo.addIndices(2);
 	vbo.addVec(tri[0]);
 	vbo.addVec(tri[1]);
 	vbo.addVec(tri[2]);

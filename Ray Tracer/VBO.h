@@ -8,7 +8,7 @@ public:
 	void addVec(Vec3<T> vector) {
 		vertices.push_back(vector);
 	}
-	void addIncices(unsigned int indice) {
+	void addIndices(unsigned int indice) {
 		indices.push_back(indice);
 	}
 	std::vector<unsigned int> indices;
