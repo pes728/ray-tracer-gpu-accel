@@ -32,12 +32,37 @@ __global__ void Render(sf::Uint8 *ColorBuffer, int WIDTH, int HEIGHT) {
 	Clear(255,0,0,255, ColorBuffer, WIDTH * HEIGHT);
 	}
 	
-	__device__ float area(Vec3f a, Vec3f b, Vec3f c){
-		return abs(a[1] * (b[2] - c[2]) + b[1] * (c[2] - a[2]) +  c[1] * (a[2] - b[2]))/2;
+template <typename T>
+__host__ __device__ Vec3<T> NormalOfTri(Vec3<T> a, Vec3<T> b, Vec3<T> &c) {
+	return (a - c).Cross(a - b);
+}
+template <typename T>
+__device__ float area(const Vec3<T> &a, const Vec3<T> &b, const Vec3<T> &c) {
+	return abs(a[1] * (b[2] - c[2]) + b[1] * (c[2] - a[2]) + c[1] * (a[2] - b[2])) / 2;
+}
+
+__device__ bool Intersect(Vec3f Pos, Vec3f Vec, float t, d_VBOf vbo) {
+	for (int i = 0; i < vbo.N; i += 3) {
+		Vec3f temp[3];
+		temp[0] = vbo.vertices[vbo.indices[i]];
+		temp[1] = vbo.vertices[vbo.indices[i + 1]];
+		temp[2] = vbo.vertices[vbo.indices[i + 2]];
+
+		Vec3f n = NormalOfTri(temp[0], temp[1], temp[2]);
+		float d = (temp[i] - Pos).Dot(n) / Vec.Dot(n);
+		Vec3f point = Pos + Vec * d;
+
+		if (area(temp[0], temp[1], temp[2])
+			== area(temp[0], temp[1], point)
+			+ area(temp[0], point, temp[2])
+			+ area(point, temp[1], temp[2]) && d > t) {
+			t = d;
+			return true;
+		}
 	}
-	
-	__device__ bool Intersect(Vec3f Pos, Vec3f Vec, float t, VBOf vbo){
-	}
+	return false;
+}
+
 
 sf::Uint8* ColorBuffer;
 
