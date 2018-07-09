@@ -6,6 +6,14 @@ class VBO {
 public:
 	VBO(){}
 
+	void addIndice(unsigned int indice) {
+		indices.push_back(indice);
+	}
+
+	void addVec(Vec3<T> vector) {
+		vertices.push_back(vector);
+	}
+
 	std::vector<unsigned int> indices;
 	std::vector<Vec3<T>> vertices;
 	Vec4<T> Color;

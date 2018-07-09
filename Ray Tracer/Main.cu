@@ -17,72 +17,42 @@ const unsigned int INITIALWIDTH = 600;
 const unsigned int INITIALHEIGHT = 600;
 unsigned int WIDTH = INITIALWIDTH;
 unsigned int HEIGHT = INITIALHEIGHT;
-unsigned int FOV = 90;
 
+unsigned int blocksize = 256;
+unsigned int numBlocks = ceil((WIDTH * HEIGHT + blocksize - 1) / blocksize);
 
 sf::Texture screen;
 
-__device__ void Clear(float r, float g, float b, float a, sf::Uint8* ColorBuffer, int N) {
-	for (int i = 0; i < N * 4; i += 4) {
+__global__ void Clear(float r, float g, float b, float a, sf::Uint8* ColorBuffer, unsigned int n) {
+	unsigned int index = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int stride = blockDim.x * gridDim.x;
+	for (int i = index * 4; i < n; i += stride) {
 		ColorBuffer[i + 0] = r;
 		ColorBuffer[i + 1] = g;
 		ColorBuffer[i + 2] = b;
 		ColorBuffer[i + 3] = a;
 	}
 }
-template <typename T>
-__host__ __device__ Vec3<T> NormalOfTri(Vec3<T> a, Vec3<T> b,Vec3<T> &c) {
+
+__device__ Vec3f NormalOfTri(Vec3f a, Vec3f b, Vec3f c) {
 	return (a - c).Cross(a - b);
 }
 template <typename T>
-__device__ float area(const Vec3<T> &a, const Vec3<T> &b, const Vec3<T> &c) {
+__device__ float4 area(const Vec3<T> &a, const Vec3<T> &b, const Vec3<T> &c) {
 	return abs(a[1] * (b[2] - c[2]) + b[1] * (c[2] - a[2]) + c[1] * (a[2] - b[2])) / 2;
 }
 
-__device__ bool Intersect(Vec3f Pos, Vec3f Vec, float t, d_VBOf vbo) {
-	for (int i = 0; i < vbo.N; i += 3) {
-		Vec3f temp[3];
-		temp[0] = vbo.vertices[vbo.indices[i]];
-		temp[1] = vbo.vertices[vbo.indices[i + 1]];
-		temp[2] = vbo.vertices[vbo.indices[i + 2]];
-
-		Vec3f n = NormalOfTri(temp[0], temp[1], temp[2]);
-		float d = (temp[i] - Pos).Dot(n) / Vec.Dot(n);
-		Vec3f point = Pos + Vec * d;
-
-		if (area(temp[0], temp[1], temp[2])
-			== area(temp[0], temp[1], point)
-			+ area(temp[0], point, temp[2])
-			+ area(point, temp[1], temp[2]) && d > t) {
-			t = d;
-			return true;
-		}
-	}
-	return false;
-}
-
-__global__ void Render(sf::Uint8 *ColorBuffer, int WIDTH, int HEIGHT, float FOV, d_VBOf *vbos, unsigned int n) {
-	Clear(255, 255, 0, 255, ColorBuffer, WIDTH * HEIGHT);
-	//generate camera rays
-	//camera pos = 0,0,0
-	//camera vec = 1,0,0
+__device__ void Intersect(Vec3f Pos, Vec3f Vec, float &t, d_VBOf* d_vbo) {
+	area(d_vbo->vertices[0], d_vbo->vertices[1], d_vbo->vertices[2]);
 	return;
-	for (int y = 0; y < HEIGHT; y++) {
-		for (int x = 0; x < WIDTH; x++) {
-			float t;
-			for (int j = 0; j < n; j++) {
-				if (Intersect(Vec3f(), Vec3f(1, (2 * x - 1) * (WIDTH / HEIGHT) * FOV, (1 - 2 * y) * tan(FOV / 2)).Normalize(), t, vbos[j])) {
-
-					ColorBuffer[x + (y * WIDTH)] = vbos[j].Color[0];
-					ColorBuffer[x + (y * WIDTH) + 1] = vbos[j].Color[1];
-					ColorBuffer[x + (y * WIDTH) + 2] = vbos[j].Color[2];
-					ColorBuffer[x + (y * WIDTH) + 3] = vbos[j].Color[3];
-				}
-			}
-		}
-	}
 }
 
+__global__ void Render(sf::Uint8 *ColorBuffer, int WIDTH, int HEIGHT, d_VBOf *d_vbo) {
+	float t = INFINITY;
+}
+
+
+sf::Uint8* ColorBuffer;
 
 int main() {
 	//setup sf variables
@@ -92,32 +62,34 @@ int main() {
 	mSprite.setTexture(screen);
 	sf::Event evnt;
 
-	d_VBOf* d_vbo;
 	sf::Uint8* ColorBuffer, *d_ColorBuffer;
 
 	ColorBuffer = new sf::Uint8[WIDTH * HEIGHT * 4];
-	for(int i = 0; i < WIDTH * HEIGHT * 4; i++) ColorBuffer[i] = 0;
+
+	for (int i = 0; i < WIDTH * HEIGHT * 4; i++)
+		ColorBuffer[i] = 0;
+
 	cudaMalloc(&d_ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4);
+
 
 	Vec3f tri[3] = { Vec3f(0,0,2),Vec3f(0,200,2),Vec3f(200,0,2) };
 
 	VBOf vbo;
-	vbo.vertices.push_back(tri[0]);
-	vbo.vertices.push_back(tri[1]);
-	vbo.vertices.push_back(tri[2]);
-	vbo.indices.push_back(0);
-	vbo.indices.push_back(1);
-	vbo.indices.push_back(2);
+	vbo.addIndice(0);
+	vbo.addIndice(1);
+	vbo.addIndice(2);
+	vbo.addVec(tri[0]);
+	vbo.addVec(tri[1]);
+	vbo.addVec(tri[2]);
+	vbo.Color = Vec4f(0, 255, 0, 255);
 
-	vbo.Color = Vec4f(0, 0, 255, 255);
-	std::vector<VBOf> objects;
-	objects.push_back(vbo);
+	d_VBOf *d_vbo;
 
-	std::vector<d_VBOf> d_objects;
-	for (VBOf vbo : objects) {
-		d_objects.push_back(d_VBOf(vbo));
-	}
+	d_VBOf host_vbo(vbo);
 
+	cudaMalloc(&d_vbo, sizeof(d_VBOf));
+
+	cudaMemcpy(d_vbo, &host_vbo, sizeof(host_vbo), cudaMemcpyHostToDevice);
 
 	while (window.isOpen()) {
 
@@ -143,30 +115,27 @@ int main() {
 					break;
 				}
 
+
 				WIDTH = window.getSize().x;
 				HEIGHT = window.getSize().y;
-				cudaFree(d_ColorBuffer);
-				cudaMalloc(&d_ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4);
-				delete ColorBuffer;
-				ColorBuffer = new sf::Uint8[WIDTH * HEIGHT * 4];
+				cudaFree(ColorBuffer);
+				cudaMalloc(&ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4);
+				unsigned int numBlocks = ceil((WIDTH * HEIGHT + blocksize - 1) / blocksize);
 				break;
 			}
 		}
 
 		sf::Clock clock;
 		//render
-		//alloc mem for vbo array of size n
+		Clear << <numBlocks, blocksize >> >(0, 255, 0, 255, d_ColorBuffer, WIDTH * HEIGHT * 4);
+		Render << <1, 1 >> >(d_ColorBuffer, WIDTH, HEIGHT, d_vbo);
 
-		cudaMalloc(&d_vbo, sizeof(d_VBOf) * d_objects.size());
-
-		cudaMemcpy(d_vbo, d_objects.data(), sizeof(d_vbo), cudaMemcpyHostToDevice);
-
-		Render <<<1, 1 >> >(d_ColorBuffer, WIDTH, HEIGHT, tan(FOV / 2), d_vbo, objects.size());
-
-		cudaMemcpy(&ColorBuffer, d_ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4, cudaMemcpyDeviceToHost);
+		cudaMemcpy(ColorBuffer, d_ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4, cudaMemcpyDeviceToHost);
 
 		//push render to screen
 		screen.update(ColorBuffer);
+
+		window.clear(sf::Color::Black);
 
 		window.draw(mSprite);
 
@@ -177,3 +146,4 @@ int main() {
 	cudaFree(d_ColorBuffer);
 	return 0;
 }
+
