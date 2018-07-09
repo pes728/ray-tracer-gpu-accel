@@ -18,16 +18,20 @@ const unsigned int INITIALHEIGHT = 600;
 unsigned int WIDTH = INITIALWIDTH;
 unsigned int HEIGHT = INITIALHEIGHT;
 
+unsigned int blocksize = 256;
+unsigned int numBlocks = ceil((WIDTH * HEIGHT + blocksize - 1) / blocksize);
+
 sf::Texture screen;
 
-__device__ bool Clear(float r, float g, float b, float a, sf::Uint8* ColorBuffer, int N) {
-	for (int i = 0; i < N * 4; i += 4) {
-		ColorBuffer[i + 0] = r;
-		ColorBuffer[i + 1] = g;
-		ColorBuffer[i + 2] = b;
-		ColorBuffer[i + 3] = a;
-	}
-	return true;
+__global__ void Clear(float r, float g, float b, float a, sf::Uint8* ColorBuffer, unsigned int n) {
+		unsigned int index = blockIdx.x * blockDim.x + threadIdx.x;
+		unsigned int stride = blockDim.x * gridDim.x;
+		for(int i = index * 4; i < n; i +=stride){
+			ColorBuffer[i + 0] = r;
+			ColorBuffer[i + 1] = g;
+			ColorBuffer[i + 2] = b;
+			ColorBuffer[i + 3] = a;
+		}
 }
 
 __device__ Vec3f NormalOfTri(Vec3f a, Vec3f b, Vec3f c) {
@@ -35,18 +39,17 @@ __device__ Vec3f NormalOfTri(Vec3f a, Vec3f b, Vec3f c) {
 }
 template <typename T>
 __device__ float area(const Vec3<T> &a, const Vec3<T> &b, const Vec3<T> &c) {
-	return abs(a[1] * (b[2] - c[2]) + b[1] * (c[2] - a[2]) + c[1] * (a[2] - b[2])) / 2;
+	float temp = a[1] * (b[2] - c[2]) + b[1] * (c[2] - a[2]) + c[1] * (a[2] - b[2]);
+	return temp;
 }
 
-__device__ bool Intersect(Vec3f Pos, Vec3f Vec, float &t, d_VBOf* d_vbo) {
-	return true;
+__device__ void Intersect(Vec3f Pos, Vec3f Vec, float &t, d_VBOf* d_vbo) {
+area(d_vbo->vertices[0], d_vbo->vertices[1], d_vbo->vertices[2]);
+	return;
 }
 
 __global__ void Render(sf::Uint8 *ColorBuffer, int WIDTH, int HEIGHT, d_VBOf *d_vbo) {
 	float t = INFINITY;
-	if(Intersect(Vec3f(), Vec3f(0,0,1), t, d_vbo))Clear(d_vbo->Color[0], d_vbo->Color[1], d_vbo->Color[2], d_vbo->Color[3], ColorBuffer, WIDTH * HEIGHT);
-	else Clear(255,0,0,255,ColorBuffer,WIDTH * HEIGHT);
-
 }
 
 
@@ -118,15 +121,15 @@ int main() {
 				HEIGHT = window.getSize().y;
 				cudaFree(ColorBuffer);
 				cudaMalloc(&ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4);
-
+				unsigned int numBlocks = ceil((WIDTH * HEIGHT + blocksize - 1) / blocksize);
 					break;
 			}
 		}
 
 		sf::Clock clock;
 		//render
-
-		Render <<<1, 1 >> >(d_ColorBuffer, WIDTH, HEIGHT, d_vbo);
+		Clear<<<numBlocks, blocksize>>>(0,255,0,255,d_ColorBuffer, WIDTH * HEIGHT * 4);
+		Render <<<1, 1 >>>(d_ColorBuffer, WIDTH, HEIGHT, d_vbo);
 		
 		cudaMemcpy(ColorBuffer, d_ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4, cudaMemcpyDeviceToHost);
 		
