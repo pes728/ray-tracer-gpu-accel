@@ -31,7 +31,7 @@ __device__ void Clear(float r, float g, float b, float a, sf::Uint8* ColorBuffer
 	}
 }
 template <typename T>
-__host__ __device__ Vec3<T> NormalOfTri(const Vec3<T> &a, const Vec3<T> &b, const Vec3<T> &c) {
+__host__ __device__ Vec3<T> NormalOfTri(Vec3<T> a, Vec3<T> b,Vec3<T> &c) {
 	return (a - c).Cross(a - b);
 }
 template <typename T>
@@ -40,20 +40,20 @@ __device__ float area(const Vec3<T> &a, const Vec3<T> &b, const Vec3<T> &c) {
 }
 
 __device__ bool Intersect(Vec3f Pos, Vec3f Vec, float t, d_VBOf vbo) {
-	for (int i = 0; i < vbo.N; i += 3){	
+	for (int i = 0; i < vbo.N; i += 3) {
 		Vec3f temp[3];
 		temp[0] = vbo.vertices[vbo.indices[i]];
 		temp[1] = vbo.vertices[vbo.indices[i + 1]];
 		temp[2] = vbo.vertices[vbo.indices[i + 2]];
-		
+
 		Vec3f n = NormalOfTri(temp[0], temp[1], temp[2]);
-	   	float d = (temp[i] - Pos).Dot(n)) / Vec.Dot(n);
+		float d = (temp[i] - Pos).Dot(n) / Vec.Dot(n);
 		Vec3f point = Pos + Vec * d;
 
 		if (area(temp[0], temp[1], temp[2])
 			== area(temp[0], temp[1], point)
 			+ area(temp[0], point, temp[2])
-			+ area(point, temp[1], temp[2]) && d > t){
+			+ area(point, temp[1], temp[2]) && d > t) {
 			t = d;
 			return true;
 		}
@@ -61,18 +61,18 @@ __device__ bool Intersect(Vec3f Pos, Vec3f Vec, float t, d_VBOf vbo) {
 	return false;
 }
 
-__global__ void Render(sf::Uint8 *ColorBuffer, int WIDTH, int HEIGHT, float FOV ,d_VBOf *vbos, unsigned int n) {
-	Clear(255,255,0,255, ColorBuffer, WIDTH * HEIGHT);
+__global__ void Render(sf::Uint8 *ColorBuffer, int WIDTH, int HEIGHT, float FOV, d_VBOf *vbos, unsigned int n) {
+	Clear(255, 255, 0, 255, ColorBuffer, WIDTH * HEIGHT);
 	//generate camera rays
 	//camera pos = 0,0,0
 	//camera vec = 1,0,0
-	for(int y = 0; y < HEIGHT; y++){
+	for (int y = 0; y < HEIGHT; y++) {
 		for (int x = 0; x < WIDTH; x++) {
 			float t;
-			for(int j = 0; j < n; j++){
+			for (int j = 0; j < n; j++) {
 				if (Intersect(Vec3f(), Vec3f(1, (2 * x - 1) * (WIDTH / HEIGHT) * FOV, (1 - 2 * y) * tan(FOV / 2)).Normalize(), t, vbos[j])) {
-					
-					ColorBuffer[x + (y * WIDTH)] = vbo[j].Color->e[0]];
+
+					ColorBuffer[x + (y * WIDTH)] = vbos[j].Color->e[0];
 					ColorBuffer[x + (y * WIDTH) + 1] = vbos[j].Color->e[1];
 					ColorBuffer[x + (y * WIDTH) + 2] = vbos[j].Color->e[2];
 					ColorBuffer[x + (y * WIDTH) + 3] = vbos[j].Color->e[3];
@@ -81,7 +81,7 @@ __global__ void Render(sf::Uint8 *ColorBuffer, int WIDTH, int HEIGHT, float FOV 
 		}
 	}
 }
-	
+
 
 int main() {
 	//setup sf variables
@@ -95,12 +95,13 @@ int main() {
 	sf::Uint8* ColorBuffer, *d_ColorBuffer;
 
 	ColorBuffer = new sf::Uint8[WIDTH * HEIGHT * 4];
-
+	for(int i = 0; i < WIDTH * HEIGHT * 4; i++) ColorBuffer[i] = 255;
 	cudaMalloc(&d_ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4);
 
-	
+	cudaMemcpy(d_ColorBuffer, ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4, cudaMemcpyHostToDevice);
+
 	Vec3f tri[3] = { Vec3f(0,0,2),Vec3f(0,200,2),Vec3f(200,0,2) };
-	
+
 	VBOf vbo;
 	vbo.vertices.push_back(tri[0]);
 	vbo.vertices.push_back(tri[1]);
@@ -109,7 +110,7 @@ int main() {
 	vbo.indices.push_back(1);
 	vbo.indices.push_back(2);
 
-	vbo.Color = &Vec4f(0,0,255,255);
+	vbo.Color = &Vec4f(0, 0, 255, 255);
 	std::vector<VBOf> objects;
 	objects.push_back(vbo);
 
@@ -149,22 +150,22 @@ int main() {
 				cudaMalloc(&d_ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4);
 				delete ColorBuffer;
 				ColorBuffer = new sf::Uint8[WIDTH * HEIGHT * 4];
-					break;
+				break;
 			}
 		}
 
 		sf::Clock clock;
 		//render
 		//alloc mem for vbo array of size n
-		
+
 		cudaMalloc(&d_vbo, sizeof(d_VBOf) * d_objects.size());
 
 		cudaMemcpy(d_vbo, d_objects.data(), sizeof(d_VBOf) * d_objects.size(), cudaMemcpyHostToDevice);
 
-		Render <<<1, 1 >>>(d_ColorBuffer, WIDTH, HEIGHT, tan(FOV/2), d_vbo, objects.size());
-		
-		cudaMemcpy(ColorBuffer, d_ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4, cudaMemcpyDeviceToHost);
-		
+		Render <<<1, 1 >> >(d_ColorBuffer, WIDTH, HEIGHT, tan(FOV / 2), d_vbo, objects.size());
+
+		cudaMemcpy(&ColorBuffer, d_ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4, cudaMemcpyDeviceToHost);
+
 		//push render to screen
 		screen.update(ColorBuffer);
 
@@ -177,4 +178,3 @@ int main() {
 	cudaFree(d_ColorBuffer);
 	return 0;
 }
-
