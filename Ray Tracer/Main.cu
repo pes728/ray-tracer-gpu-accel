@@ -95,7 +95,7 @@ int main() {
 	sf::Uint8* ColorBuffer, *d_ColorBuffer;
 
 	ColorBuffer = new sf::Uint8[WIDTH * HEIGHT * 4];
-	for(int i = 0; i < WIDTH * HEIGHT * 4; i++) ColorBuffer[i] = 255;
+	for(int i = 0; i < WIDTH * HEIGHT * 4; i++) ColorBuffer[i] = 0;
 	cudaMalloc(&d_ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4);
 
 	cudaMemcpy(d_ColorBuffer, ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4, cudaMemcpyHostToDevice);
