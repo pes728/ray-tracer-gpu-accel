@@ -32,8 +32,8 @@ public:
 template <typename T>
 class Vec3 {
 public:
-	Vec3() {e[0] = 0; e[1] = 0; e[2] = 0;}
-	Vec3(T x, T y, T z) {
+	__host__ __device__ Vec3() {e[0] = 0; e[1] = 0; e[2] = 0;}
+	__host__ __device__ Vec3(T x, T y, T z) {
 		e[0] = x; e[1] = y; e[2] = z;
 	}
 
@@ -63,6 +63,17 @@ public:
     void Print(){
         std::cout << e[0] << ", " << e[1] << ", " << e[2] << std::endl;
     }
+	__host__ __device__ Vec3<T> operator-(Vec3<T> v) {
+		return Vec3<T>(this->x() - v.x(), this->y() - v.y(), this->z() - v.z());
+	}
+
+	__host__ __device__ Vec3<T> operator+(Vec3<T> v) {
+		return Vec3<T>(this->x() + v.x(), this->y() + v.y(), this->z() + v.z());
+	}
+
+	__host__ __device__ Vec3<T> operator*(T t) {
+		return Vec3<T>(this->x() * t, this->y() * t, this->z() * t);
+	}
 
 	
 	

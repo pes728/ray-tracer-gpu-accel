@@ -15,3 +15,18 @@ public:
 	std::vector<Vec3<T>> vertices;
 	Vec4<T> Color;
 };
+
+template <typename T>
+class d_VBO {
+public:
+	d_VBO(){}
+	d_VBO(VBO<T> vbo) {
+		indices = vbo.indices.data();
+		vertices = vbo.vertices.data();
+		Color = vbo.Color;
+	}
+
+	unsigned int *indices;
+	Vec3<T> *vertices;
+	Vec4<T> Color;
+};
