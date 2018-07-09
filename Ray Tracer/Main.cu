@@ -38,9 +38,8 @@ __device__ Vec3f NormalOfTri(Vec3f a, Vec3f b, Vec3f c) {
 	return (a - c).Cross(a - b);
 }
 template <typename T>
-__device__ float area(const Vec3<T> &a, const Vec3<T> &b, const Vec3<T> &c) {
-	float temp = a[1] * (b[2] - c[2]) + b[1] * (c[2] - a[2]) + c[1] * (a[2] - b[2]);
-	return temp;
+__device__ float4 area(const Vec3<T> &a, const Vec3<T> &b, const Vec3<T> &c) {
+	return abs(a[1] * (b[2] - c[2]) + b[1] * (c[2] - a[2]) + c[1] * (a[2] - b[2])) / 2;
 }
 
 __device__ void Intersect(Vec3f Pos, Vec3f Vec, float &t, d_VBOf* d_vbo) {
