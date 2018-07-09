@@ -31,23 +31,29 @@ __device__ void Clear(float r, float g, float b, float a, sf::Uint8* ColorBuffer
 	}
 }
 template <typename T>
-__host__ __device__ Vec3<T> NormalOfTri(Vec3<T> a, Vec3<T> b, Vec3<T> c) {
+__host__ __device__ Vec3<T> NormalOfTri(const Vec3<T> &a, const Vec3<T> &b, const Vec3<T> &c) {
 	return (a - c).Cross(a - b);
 }
-
-__device__ float area(Vec3f a, Vec3f b, Vec3f c) {
+template <typename T>
+__device__ float area(const Vec3<T> &a, const Vec3<T> &b, const Vec3<T> &c) {
 	return abs(a[1] * (b[2] - c[2]) + b[1] * (c[2] - a[2]) + c[1] * (a[2] - b[2])) / 2;
 }
 
 __device__ bool Intersect(Vec3f Pos, Vec3f Vec, float t, d_VBOf vbo) {
-	for (int i = 0; i < vbo.N; i += 3){	Vec3f n = NormalOfTri(vbo.vertices[vbo.indices[i]], vbo.vertices[vbo.indices[i + 1]], vbo.vertices[vbo.indices[i + 2]]);
-		float d = ((vbo.vertices[vbo.indices[i]] - Pos).Dot(n)) / Vec.Dot(n);
+	for (int i = 0; i < vbo.N; i += 3){	
+		Vec3f temp[3];
+		temp[0] = vbo.vertices[vbo.indices[i]];
+		temp[1] = vbo.vertices[vbo.indices[i + 1]];
+		temp[2] = vbo.vertices[vbo.indices[i + 2]];
+		
+		Vec3f n = NormalOfTri(temp[0], temp[1], temp[2]);
+	   	float d = (temp[i] - Pos).Dot(n)) / Vec.Dot(n);
 		Vec3f point = Pos + Vec * d;
 
-		if (area(vbo.vertices[vbo.indices[i]], vbo.vertices[vbo.indices[i + 1]], vbo.vertices[vbo.indices[i + 2]])
-			== area(vbo.vertices[vbo.indices[i]], vbo.vertices[vbo.indices[i + 1]], point)
-			+ area(vbo.vertices[vbo.indices[i]], point, vbo.vertices[vbo.indices[i + 2]])
-			+ area(point, vbo.vertices[vbo.indices[i + 1]], vbo.vertices[vbo.indices[i + 2]]) && d > t){
+		if (area(temp[0], temp[1], temp[2])
+			== area(temp[0], temp[1], point)
+			+ area(temp[0], point, temp[2])
+			+ area(point, temp[1], temp[2]) && d > t){
 			t = d;
 			return true;
 		}
@@ -64,9 +70,9 @@ __global__ void Render(sf::Uint8 *ColorBuffer, int WIDTH, int HEIGHT, float FOV 
 		for (int x = 0; x < WIDTH; x++) {
 			float t;
 			for(int j = 0; j < n; j++){
-				if (true || Intersect(Vec3f(), Vec3f(1, (2 * x - 1) * (WIDTH / HEIGHT) * FOV, (1 - 2 * y) * tan(FOV / 2)).Normalize(), t, vbos[j])) {
+				if (Intersect(Vec3f(), Vec3f(1, (2 * x - 1) * (WIDTH / HEIGHT) * FOV, (1 - 2 * y) * tan(FOV / 2)).Normalize(), t, vbos[j])) {
 					
-					ColorBuffer[x + (y * WIDTH)] = vbos[j].Color->e[0];
+					ColorBuffer[x + (y * WIDTH)] = vbo[j].Color->e[0]];
 					ColorBuffer[x + (y * WIDTH) + 1] = vbos[j].Color->e[1];
 					ColorBuffer[x + (y * WIDTH) + 2] = vbos[j].Color->e[2];
 					ColorBuffer[x + (y * WIDTH) + 3] = vbos[j].Color->e[3];
