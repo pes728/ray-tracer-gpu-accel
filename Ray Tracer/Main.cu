@@ -23,7 +23,7 @@ unsigned int numBlocks = ceil((WIDTH * HEIGHT + blocksize - 1) / blocksize);
 
 sf::Texture screen;
 
-__global__ void Clear(float r, float g, float b, float a, sf::Uint8* ColorBuffer, unsigned int n) {
+__device__ void Clear(float r, float g, float b, float a, sf::Uint8* ColorBuffer, unsigned int n) {
 	unsigned int index = blockIdx.x * blockDim.x + threadIdx.x;
 	unsigned int stride = blockDim.x * gridDim.x;
 	for (int i = index * 4; i < n; i += stride) {
@@ -34,21 +34,31 @@ __global__ void Clear(float r, float g, float b, float a, sf::Uint8* ColorBuffer
 	}
 }
 
+__device__ void setPixel(float r, float g, float b, float a, sf::Uint8* ColorBuffer, unsigned int i) {
+		ColorBuffer[i + 0] = r;
+		ColorBuffer[i + 1] = g;
+		ColorBuffer[i + 2] = b;
+		ColorBuffer[i + 3] = a;
+}
+
 __device__ Vec3f NormalOfTri(Vec3f a, Vec3f b, Vec3f c) {
 	return (a - c).Cross(a - b);
 }
 template <typename T>
-__device__ float4 area(const Vec3<T> &a, const Vec3<T> &b, const Vec3<T> &c) {
+__device__ float area(Vec3<T> a, Vec3<T> b, Vec3<T> c) {
 	return abs(a[1] * (b[2] - c[2]) + b[1] * (c[2] - a[2]) + c[1] * (a[2] - b[2])) / 2;
 }
 
-__device__ void Intersect(Vec3f Pos, Vec3f Vec, float &t, d_VBOf* d_vbo) {
-	area(d_vbo->vertices[0], d_vbo->vertices[1], d_vbo->vertices[2]);
-	return;
-}
+__global__ void Render(sf::Uint8 *ColorBuffer, int WIDTH, int HEIGHT, Vec3f *VecBuffer, unsigned int *IndiceBuffer) {
+	Clear(0,255,0,255, ColorBuffer, WIDTH * HEIGHT * 4);
 
-__global__ void Render(sf::Uint8 *ColorBuffer, int WIDTH, int HEIGHT, d_VBOf *d_vbo) {
-	float t = INFINITY;
+	Vec3f point(0,0,2);
+
+	if(area(VecBuffer[IndiceBuffer[0]], VecBuffer[IndiceBuffer[1]], VecBuffer[IndiceBuffer[2]]) == 
+		area(VecBuffer[IndiceBuffer[0]], VecBuffer[IndiceBuffer[1]], point)
+		+ area(VecBuffer[IndiceBuffer[0]], point, VecBuffer[IndiceBuffer[2]])
+		+ area(point, VecBuffer[IndiceBuffer[1]], VecBuffer[IndiceBuffer[2]]))
+		setPixel(255,255,255,255, ColorBuffer, (blockIdx.x * blockDim.x + threadIdx.x) * 4);
 }
 
 
@@ -83,13 +93,20 @@ int main() {
 	vbo.addVec(tri[2]);
 	vbo.Color = Vec4f(0, 255, 0, 255);
 
-	d_VBOf *d_vbo;
+	Vec3f *VecBuffer = vbo.vertices.data();
+	Vec3f *d_VecBuffer;
 
-	d_VBOf host_vbo(vbo);
+	unsigned int *IndiceBuffer = vbo.indices.data();
+	unsigned int *d_IndiceBuffer;
 
-	cudaMalloc(&d_vbo, sizeof(d_VBOf));
 
-	cudaMemcpy(d_vbo, &host_vbo, sizeof(host_vbo), cudaMemcpyHostToDevice);
+	cudaMalloc(&d_VecBuffer, sizeof(Vec3f) * vbo.vertices.size());
+
+	cudaMemcpy(d_VecBuffer, VecBuffer, sizeof(Vec3f) * vbo.vertices.size(), cudaMemcpyHostToDevice);
+
+	cudaMalloc(&d_IndiceBuffer, sizeof(unsigned int) * vbo.indices.size());
+
+	cudaMemcpy(d_IndiceBuffer, IndiceBuffer,sizeof(unsigned int) * vbo.indices.size(), cudaMemcpyHostToDevice);
 
 	while (window.isOpen()) {
 
@@ -127,8 +144,7 @@ int main() {
 
 		sf::Clock clock;
 		//render
-		Clear << <numBlocks, blocksize >> >(0, 255, 0, 255, d_ColorBuffer, WIDTH * HEIGHT * 4);
-		Render << <1, 1 >> >(d_ColorBuffer, WIDTH, HEIGHT, d_vbo);
+		Render <<<numBlocks, blocksize >>>(d_ColorBuffer, WIDTH, HEIGHT, d_VecBuffer, d_IndiceBuffer);
 
 		cudaMemcpy(ColorBuffer, d_ColorBuffer, sizeof(sf::Uint8) * WIDTH * HEIGHT * 4, cudaMemcpyDeviceToHost);
 

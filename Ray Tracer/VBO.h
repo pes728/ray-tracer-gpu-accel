@@ -33,10 +33,8 @@ public:
 		indices = vbo.indices.data();
 		vertices = vbo.vertices.data();
 		Color = vbo.Color;
-		N = vbo.indices.size();
 	}
 
-	unsigned int N;
 	unsigned int* indices;
 	Vec3<T> *vertices;
 	Vec4<T> Color;
